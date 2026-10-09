@@ -1,7 +1,7 @@
 # MandatoryMaintenanceScheduling
 Modification of the original grblhal Odometer plugin to implement a mandatory maintenance schedule based on axis travel
 
-* AI CODED
+* **WARNING USE AT OWN RISK - AI CODED**
 
 * Startup: sets up the plugin. It allocates storage and checks it is suitable. Then it loads the saved odometer record, registers the settings and installs the hooks.
 * Step counting: counts step pulses per axis during cycles and homing.
