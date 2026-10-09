@@ -141,6 +141,35 @@ static void odometers_save (void)
     nvs.memcpy_to_nvs(odometers_address, (uint8_t *)&snapshot, sizeof(odometer_data_t), true);
 }
 
+// Checks the historical travel of each axis against its maintenance setpoint
+// (settings $1501 - $1505, in metres) and raises Alarm_Maintenance if any axis
+// has travelled further than its setpoint. A setpoint of 0 disables the check
+// for that axis, and nothing is checked unless maintenance tracking ($1500) is enabled.
+// Runs as a foreground task (scheduled from onStateChanged) so the alarm is not
+// raised from inside the state change handler.
+static void odometer_check_maintenance (void *data)
+{
+    uint_fast8_t idx;
+    odometer_data_t snapshot;
+    char buf[48];
+
+    if(!config.flags.enable)
+        return;
+
+    odometers_snapshot(&snapshot);
+
+    for(idx = 0 ; idx < N_AXIS ; idx++) {
+
+        // Odometer is kept in mm, the setpoint is in metres.
+        if(config.maint_distance[idx] && (snapshot.distance[idx] / 1000.0f) > (float)config.maint_distance[idx]) {
+            sprintf(buf, "%s axis requires maintenance", axis_letter[idx]);
+            report_message(buf, Message_Warning);
+            system_raise_alarm(Alarm_Maintenance);
+            return; // one alarm is enough, the message names the first axis over its limit
+        }
+    }
+}
+
 // Step pulse start hook: counts a step for every axis that is pulsed (only
 // in CYCLE and HOMING), then passes control on to the original handler.
 static void stepperPulseStart (stepper_t *stepper)
@@ -206,6 +235,9 @@ void onStateChanged (sys_state_t state)
 
         // Save the updated record to NVS.
         odometers_save();
+
+        // Check the new totals against the maintenance setpoints from the foreground.
+        task_add_immediate(odometer_check_maintenance, NULL);
     }
 
     // Chain to the previously registered state change handler, if any.
