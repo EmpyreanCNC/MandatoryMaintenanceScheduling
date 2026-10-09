@@ -1,4 +1,5 @@
 Addition to plugins_init.h
+--------------------------------------------------------------------------------------
 
 #if ODOMETER_ENABLE
     extern void odometer_init (void);
